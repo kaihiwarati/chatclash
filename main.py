@@ -431,6 +431,45 @@ async def left_member(message: types.Message):
     )
 
     await message.reply(text, parse_mode="HTML")
+
+# ================Couple random============
+import random
+from datetime import datetime
+
+@dp.message_handler(commands=['couple'])
+async def couple(message: types.Message):
+
+    group_id = message.chat.id
+
+    cursor.execute("SELECT user_id FROM users WHERE group_id=?", (group_id,))
+    users = [u[0] for u in cursor.fetchall()]
+
+    if len(users) < 2:
+        return await message.reply("❌ Not enough users.")
+
+    user1_id, user2_id = random.sample(users, 2)
+
+    user1 = await bot.get_chat_member(group_id, user1_id)
+    user2 = await bot.get_chat_member(group_id, user2_id)
+
+    name1 = user1.user.full_name
+    name2 = user2.user.full_name
+
+    caption = (
+        f"💘 <b>Couple of the Day</b>\n\n"
+        f"💖 {name1} ❤️ {name2}\n\n"
+        f"🔥 Stay together for today!"
+    )
+
+    # Send your banner directly
+    with open("couple.png", "rb") as photo:
+        await bot.send_photo(
+            message.chat.id,
+            photo,
+            caption=caption,
+            parse_mode="HTML"
+        )
+    
 # ================= START =================
 if __name__ == "__main__":
     print("✅ Bot running...")
