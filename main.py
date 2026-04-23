@@ -74,7 +74,20 @@ async def stats_btn(callback: types.CallbackQuery):
 
 @dp.callback_query_handler(lambda c: c.data == "lb_overall")
 async def open_leaderboard(callback: types.CallbackQuery):
-    await callback.message.answer("Use /leaderboard in group 🏆")
+
+    text = await get_leaderboard_text(
+        callback.message.chat.id,
+        "total_count",
+        "Overall Leaderboard"
+    )
+
+    await callback.message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=leaderboard_buttons("overall")
+    )
+
+    await callback.answer()
 
 # ================= PING =================
 @dp.message_handler(commands=['ping'])
@@ -236,6 +249,7 @@ async def leaderboard(message: types.Message):
         parse_mode="HTML",
         reply_markup=leaderboard_buttons("overall")
     )
+    print("Leaderboard command triggered")
 
 @dp.callback_query_handler(lambda c: c.data.startswith("lb_"))
 async def leaderboard_callback(callback: types.CallbackQuery):
