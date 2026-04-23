@@ -237,6 +237,9 @@ async def get_leaderboard_text(group_id, column, title):
 
 @dp.message_handler(commands=['leaderboard'])
 async def leaderboard(message: types.Message):
+    print("LEADERBOARD TRIGGERED")  # DEBUG
+
+    await message.reply("Working")
 
     text = await get_leaderboard_text(
         message.chat.id,
@@ -249,7 +252,6 @@ async def leaderboard(message: types.Message):
         parse_mode="HTML",
         reply_markup=leaderboard_buttons("overall")
     )
-    print("Leaderboard command triggered")
 
 @dp.callback_query_handler(lambda c: c.data.startswith("lb_"))
 async def leaderboard_callback(callback: types.CallbackQuery):
