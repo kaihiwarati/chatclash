@@ -8,10 +8,10 @@ import time
 from dotenv import load_dotenv
 import random
 
-OWNER_ID = 7480261167 # put your Telegram ID here
+ADMINS = [7480261167, 5641745830, 7725857477] # put your Telegram ID here
 
-def is_owner(user_id):
-    return user_id == OWNER_ID
+def is_admin_user(user_id):
+    return user_id in ADMINS
 
 # ================= ENV =================
 load_dotenv()
@@ -169,6 +169,14 @@ async def stats(message: types.Message):
     )
 
 # ================= MESSAGE TRACK =================
+from collections import defaultdict
+import time
+
+user_messages = defaultdict(list)
+
+panic_mode = False
+shadow_muted = set()
+
 @dp.message_handler(lambda message: message.text and not message.text.startswith('/'))
 async def track_message(message: types.Message):
 
@@ -176,6 +184,57 @@ async def track_message(message: types.Message):
         return
 
     user_id = message.from_user.id
+    # 🔥 SPAM DETECTION
+now = time.time()
+
+user_messages[user_id].append(now)
+
+# Keep only last 5 messages within 5 seconds
+user_messages[user_id] = [
+    t for t in user_messages[user_id] if now - t <= 5
+]
+
+# If 5 messages in 5 sec → spam
+if len(user_messages[user_id]) >= 5 and not await is_admin(message):
+    try:
+        await bot.restrict_chat_member(
+            message.chat.id,
+            user_id,
+            types.ChatPermissions(can_send_messages=False),
+            until_date=int(time.time()) + 10
+        )
+
+        await message.reply("🚫 Stop spamming! Muted for 10 seconds.")
+
+        user_messages[user_id] = []  # reset after punishment
+
+    except:
+        pass
+
+    return
+    
+    # 👻 SHADOW MUTE (delete message silently)
+    if user_id in shadow_muted:
+        try:
+            if user_id in shadow_muted and not await is_admin(message):
+        except:
+            pass
+        return  # stop further processing
+
+    # ⚠️ PANIC MODE (auto mute users)
+    if panic_mode and not await is_admin(message):
+        try:
+            await bot.restrict_chat_member(
+                message.chat.id,
+                user_id,
+                types.ChatPermissions(can_send_messages=False),
+                until_date=int(time.time()) + 30
+            )
+        except:
+            pass
+        return  # stop further processing
+
+    # ================= NORMAL TRACKING =================
     group_id = message.chat.id
     group_name = message.chat.title
     name = message.from_user.full_name
@@ -353,8 +412,8 @@ async def get_id(message: types.Message):
 @dp.message_handler(commands=['lockdown'])
 async def lockdown(message: types.Message):
 
-    if not is_owner(message.from_user.id):
-        return
+    if not is_admin_user(message.from_user.id):
+    return
 
     await bot.set_chat_permissions(
         message.chat.id,
@@ -367,8 +426,8 @@ async def lockdown(message: types.Message):
 @dp.message_handler(commands=['unlock'])
 async def unlock(message: types.Message):
 
-    if not is_owner(message.from_user.id):
-        return
+    if not is_admin_user(message.from_user.id):
+    return
 
     await bot.set_chat_permissions(
         message.chat.id,
@@ -376,7 +435,147 @@ async def unlock(message: types.Message):
     )
 
     await message.reply("🔓 Chat unlocked")
-# ================= START =================
+
+# ================= ADD SUPER ADMIN ===============
+@dp.message_handler(commands=['addadmin'])
+async def add_admin(message: types.Message):
+
+    if message.from_user.id not in ADMINS:
+        return
+
+    if message.reply_to_message:
+        new_id = message.reply_to_message.from_user.id
+        ADMINS.append(new_id)
+
+        await message.reply("👑 New super admin added")
+
+# ============ remove super admin ===================
+@dp.message_handler(commands=['removeadmin'])
+async def remove_admin(message: types.Message):
+
+    if not is_admin_user(message.from_user.id):
+        return
+
+    if message.reply_to_message:
+        uid = message.reply_to_message.from_user.id
+
+        if uid in ADMINS:
+            ADMINS.remove(uid)
+            await message.reply("❌ Removed from admins")
+# =============Panic================
+panic_mode = False
+
+@dp.message_handler(commands=['panic'])
+async def panic(message: types.Message):
+    global panic_mode
+
+    if not is_owner(message.from_user.id):
+        return
+
+    panic_mode = True
+    await message.reply("⚠️ Panic mode ON")
+
+#====================disable panic ============
+
+@dp.message_handler(commands=['unpanic'])
+async def unpanic(message: types.Message):
+    global panic_mode
+
+    if not is_owner(message.from_user.id):
+        return
+
+    panic_mode = False
+    await message.reply("✅ Panic mode OFF")
+
+#=============== shadow =============
+shadow_muted = set()
+
+@dp.message_handler(commands=['shadowmute'])
+async def shadowmute(message: types.Message):
+
+    if not is_owner(message.from_user.id):
+        return
+
+    if message.reply_to_message:
+        uid = message.reply_to_message.from_user.id
+        shadow_muted.add(uid)
+        await message.reply("👻 User shadow muted")
+
+# ============= UNsahow ==========
+@dp.message_handler(commands=['unshadow'])
+async def unshadow(message: types.Message):
+
+    if not is_owner(message.from_user.id):
+        return
+
+    if message.reply_to_message:
+        uid = message.reply_to_message.from_user.id
+        shadow_muted.discard(uid)
+        await message.reply("✅ Shadow removed")
+
+# ================ super admin list==============
+@dp.message_handler(commands=['superadmins'])
+async def show_admins(message: types.Message):
+
+    if not is_admin_user(message.from_user.id):
+        return
+
+    text = "👑 <b>Admins List</b>\n\n"
+
+    for uid in ADMINS:
+        try:
+            user = await bot.get_chat_member(message.chat.id, uid)
+            text += f"• {user.user.full_name}\n"
+        except:
+            text += f"• {uid}\n"
+
+    await message.reply(text, parse_mode="HTML")
+
+# ================ hidden command list =================
+@dp.message_handler(commands=['adminhelp'])
+async def admin_help(message: types.Message):
+
+    if not is_admin_user(message.from_user.id):
+        return
+
+    text = (
+        "⚙️ <b>Admin Commands Panel</b>\n\n"
+         "👑 <b>Admin Management</b>\n"
+        "➕ /addadmin (reply)\n"
+        "→ Add user to admin list\n\n"
+
+        "❌ /removeadmin (reply)\n"
+        "→ Remove user from admin list\n\n"
+
+        "👥 /superadmins\n"
+        "→ Show admin list\n\n"
+
+        "━━━━━━━━━━━━━━━\n\n"
+
+        "🔒 /lockdown\n"
+
+        "🔒 /lockdown\n"
+        "→ Lock chat (no one can send messages)\n\n"
+
+        "🔓 /unlock\n"
+        "→ Unlock chat\n\n"
+
+        "⚠️ /panic\n"
+        "→ Auto mute users sending messages\n\n"
+
+        "✅ /unpanic\n"
+        "→ Disable panic mode\n\n"
+
+        "👻 /shadowmute (reply)\n"
+        "→ Delete user's messages silently\n\n"
+
+        "👤 /unshadow (reply)\n"
+        "→ Remove shadow mute\n\n"
+    )
+
+    await message.reply(text, parse_mode="HTML")
+
+# ========== START =================
 if __name__ == "__main__":
     print("✅ Bot running...")
     executor.start_polling(dp, skip_updates=True)
