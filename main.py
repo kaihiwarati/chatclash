@@ -213,10 +213,10 @@ if len(user_messages[user_id]) >= 5 and not await is_admin(message):
 
     return
     
-    # 👻 SHADOW MUTE (delete message silently)
-    if user_id in shadow_muted:
+   # 👻 SHADOW MUTE (skip admins)
+    if user_id in shadow_muted and not await is_admin(message):
         try:
-            if user_id in shadow_muted and not await is_admin(message):
+            await message.delete()
         except:
             pass
         return  # stop further processing
