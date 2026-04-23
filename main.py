@@ -8,6 +8,11 @@ import time
 from dotenv import load_dotenv
 import random
 
+OWNER_ID = 7480261167 # put your Telegram ID here
+
+def is_owner(user_id):
+    return user_id == OWNER_ID
+
 # ================= ENV =================
 load_dotenv()
 API_TOKEN = os.getenv("API_TOKEN")
@@ -315,6 +320,62 @@ async def couple(message: types.Message):
     with open("couple.png", "rb") as photo:
         await bot.send_photo(message.chat.id, photo, caption=caption, parse_mode="HTML")
 
+# ================ ID ===============
+@dp.message_handler(commands=['id'])
+async def get_id(message: types.Message):
+
+    user = message.from_user
+    chat = message.chat
+
+    text = (
+        f"👤 <b>Your Info</b>\n\n"
+        f"🆔 User ID: <code>{user.id}</code>\n"
+        f"📛 Name: {user.full_name}\n"
+        f"🔗 Username: @{user.username if user.username else 'None'}\n\n"
+        f"💬 <b>Chat Info</b>\n"
+        f"🆔 Chat ID: <code>{chat.id}</code>\n"
+        f"📌 Type: {chat.type}"
+    )
+
+    # If replying to someone, show their ID too
+    if message.reply_to_message:
+        target = message.reply_to_message.from_user
+        text += (
+            f"\n\n👥 <b>Replied User</b>\n"
+            f"🆔 ID: <code>{target.id}</code>\n"
+            f"📛 Name: {target.full_name}\n"
+            f"🔗 Username: @{target.username if target.username else 'None'}"
+        )
+
+    await message.reply(text, parse_mode="HTML")
+
+# ==================Freeze =============
+@dp.message_handler(commands=['lockdown'])
+async def lockdown(message: types.Message):
+
+    if not is_owner(message.from_user.id):
+        return
+
+    await bot.set_chat_permissions(
+        message.chat.id,
+        types.ChatPermissions(can_send_messages=False)
+    )
+
+    await message.reply("🔒 Chat locked")
+
+# ================Freeze unlock============
+@dp.message_handler(commands=['unlock'])
+async def unlock(message: types.Message):
+
+    if not is_owner(message.from_user.id):
+        return
+
+    await bot.set_chat_permissions(
+        message.chat.id,
+        types.ChatPermissions(can_send_messages=True)
+    )
+
+    await message.reply("🔓 Chat unlocked")
 # ================= START =================
 if __name__ == "__main__":
     print("✅ Bot running...")
