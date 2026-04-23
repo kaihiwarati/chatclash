@@ -170,7 +170,6 @@ async def stats(message: types.Message):
 
 # ================= MESSAGE TRACK =================
 from collections import defaultdict
-import time
 
 user_messages = defaultdict(list)
 
@@ -184,44 +183,39 @@ async def track_message(message: types.Message):
         return
 
     user_id = message.from_user.id
+
     # 🔥 SPAM DETECTION
-now = time.time()
+    now = time.time()
 
-user_messages[user_id].append(now)
+    user_messages[user_id].append(now)
 
-# Keep only last 5 messages within 5 seconds
-user_messages[user_id] = [
-    t for t in user_messages[user_id] if now - t <= 5
-]
+    user_messages[user_id] = [
+        t for t in user_messages[user_id] if now - t <= 5
+    ]
 
-# If 5 messages in 5 sec → spam
-if len(user_messages[user_id]) >= 5 and not await is_admin(message):
-    try:
-        await bot.restrict_chat_member(
-            message.chat.id,
-            user_id,
-            types.ChatPermissions(can_send_messages=False),
-            until_date=int(time.time()) + 10
-        )
+    if len(user_messages[user_id]) >= 5 and not await is_admin(message):
+        try:
+            await bot.restrict_chat_member(
+                message.chat.id,
+                user_id,
+                types.ChatPermissions(can_send_messages=False),
+                until_date=int(time.time()) + 10
+            )
+            await message.reply("🚫 Stop spamming! Muted for 10 seconds.")
+            user_messages[user_id] = []
+        except:
+            pass
+        return
 
-        await message.reply("🚫 Stop spamming! Muted for 10 seconds.")
-
-        user_messages[user_id] = []  # reset after punishment
-
-    except:
-        pass
-
-    return
-    
-   # 👻 SHADOW MUTE (skip admins)
+    # 👻 SHADOW MUTE
     if user_id in shadow_muted and not await is_admin(message):
         try:
             await message.delete()
         except:
             pass
-        return  # stop further processing
+        return
 
-    # ⚠️ PANIC MODE (auto mute users)
+    # ⚠️ PANIC MODE
     if panic_mode and not await is_admin(message):
         try:
             await bot.restrict_chat_member(
@@ -232,7 +226,7 @@ if len(user_messages[user_id]) >= 5 and not await is_admin(message):
             )
         except:
             pass
-        return  # stop further processing
+        return
 
     # ================= NORMAL TRACKING =================
     group_id = message.chat.id
@@ -240,7 +234,6 @@ if len(user_messages[user_id]) >= 5 and not await is_admin(message):
     name = message.from_user.full_name
 
     today = datetime.datetime.now().strftime("%Y-%m-%d")
-    week = datetime.datetime.now().strftime("%Y-%W")
 
     cursor.execute("""
     INSERT OR IGNORE INTO users 
@@ -248,13 +241,11 @@ if len(user_messages[user_id]) >= 5 and not await is_admin(message):
     VALUES (?, ?, ?, ?, 0, 0, 0, ?)
     """, (user_id, group_id, group_name, name, today))
 
-    # Reset daily
     cursor.execute("""
     UPDATE users SET daily_count=0 
     WHERE group_id=? AND last_active_date != ?
     """, (group_id, today))
 
-    # Update counts
     cursor.execute("""
     UPDATE users SET
         daily_count = daily_count + 1,
@@ -265,7 +256,6 @@ if len(user_messages[user_id]) >= 5 and not await is_admin(message):
     """, (today, user_id, group_id))
 
     conn.commit()
-
 # ================= LEADERBOARD =================
 def leaderboard_buttons(active="overall"):
     return InlineKeyboardMarkup(row_width=3).add(
@@ -413,7 +403,7 @@ async def get_id(message: types.Message):
 async def lockdown(message: types.Message):
 
     if not is_admin_user(message.from_user.id):
-    return
+        return
 
     await bot.set_chat_permissions(
         message.chat.id,
@@ -427,7 +417,7 @@ async def lockdown(message: types.Message):
 async def unlock(message: types.Message):
 
     if not is_admin_user(message.from_user.id):
-    return
+        return
 
     await bot.set_chat_permissions(
         message.chat.id,
