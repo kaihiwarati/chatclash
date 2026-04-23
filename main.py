@@ -20,7 +20,7 @@ dp = Dispatcher(bot)
 
 # ================= DB =================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-db_path = os.path.join(BASE_DIR, "data.db")
+db_path = os.path.join(BASE_DIR, "data_v2.db")
 
 conn = sqlite3.connect(db_path)
 cursor = conn.cursor()
@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS users (
     daily_count INTEGER DEFAULT 0,
     weekly_count INTEGER DEFAULT 0,
     total_count INTEGER DEFAULT 0,
-    last_active_date TEXT
+    last_active_date TEXT,
+    UNIQUE(user_id, group_id)
 )
 """)
 conn.commit()
