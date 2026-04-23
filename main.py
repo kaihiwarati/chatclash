@@ -163,7 +163,7 @@ async def stats(message: types.Message):
     )
 
 # ================= MESSAGE TRACK =================
-@dp.message_handler()
+@dp.message_handler(lambda message: message.text and not message.text.startswith('/'))
 async def track_message(message: types.Message):
 
     if message.chat.type == "private":
@@ -235,9 +235,9 @@ async def get_leaderboard_text(group_id, column, title):
     text += f"\n📨 Total messages: {total}"
     return text
 
-@dp.message_handler(commands=['leaderboard'])
+@dp.message_handler(lambda message: message.text and message.text.lower().startswith('/leaderboard'))
 async def leaderboard(message: types.Message):
-    print("LEADERBOARD TRIGGERED")  # DEBUG
+    print("LEADERBOARD TRIGGERED")
 
     await message.reply("Working")
 
