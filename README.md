@@ -1,5 +1,5 @@
 # 🤖 Telegram Ranking Bot
-Its dead now but you can use code
+Its dead now but you can use code and contact me for any changes
 
 A powerful Telegram bot with ranking, leaderboard, and admin system.
 
